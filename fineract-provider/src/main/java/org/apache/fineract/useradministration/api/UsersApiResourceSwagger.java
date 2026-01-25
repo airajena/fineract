@@ -135,6 +135,8 @@ final class UsersApiResourceSwagger {
         @Schema(example = "true")
         public Boolean passwordNeverExpires;
         @Schema(example = "true")
+        public Boolean isPasswordResetAllowed;
+        @Schema(example = "true")
         public Boolean isSelfServiceUser;
     }
 
@@ -215,6 +217,8 @@ final class UsersApiResourceSwagger {
         public String repeatPassword;
         @Schema(example = "true")
         public Boolean sendPasswordToEmail;
+        @Schema(example = "true")
+        public Boolean isPasswordResetAllowed;
         @Schema(example = "true")
         public Boolean isSelfServiceUser;
     }

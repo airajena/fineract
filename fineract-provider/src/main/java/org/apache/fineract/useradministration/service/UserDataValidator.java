@@ -61,12 +61,12 @@ public final class UserDataValidator {
     /**
      * The parameters supported for this command.
      */
-    private static final Set<String> CREATE_SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(USERNAME, FIRSTNAME, LASTNAME, PASSWORD, REPEAT_PASSWORD, EMAIL, OFFICE_ID, NOT_SELECTED_ROLES, ROLES,
-                    SEND_PASSWORD_TO_EMAIL, STAFF_ID, PASSWORD_NEVER_EXPIRES, AppUserConstants.IS_SELF_SERVICE_USER, CLIENTS));
-    private static final Set<String> UPDATE_SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(USERNAME, FIRSTNAME, LASTNAME, PASSWORD, REPEAT_PASSWORD, EMAIL, OFFICE_ID, NOT_SELECTED_ROLES, ROLES,
-                    SEND_PASSWORD_TO_EMAIL, STAFF_ID, PASSWORD_NEVER_EXPIRES, AppUserConstants.IS_SELF_SERVICE_USER, CLIENTS));
+    private static final Set<String> CREATE_SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(USERNAME, FIRSTNAME, LASTNAME, PASSWORD,
+            REPEAT_PASSWORD, EMAIL, OFFICE_ID, NOT_SELECTED_ROLES, ROLES, SEND_PASSWORD_TO_EMAIL, STAFF_ID, PASSWORD_NEVER_EXPIRES,
+            AppUserConstants.IS_PASSWORD_RESET_ALLOWED, AppUserConstants.IS_SELF_SERVICE_USER, CLIENTS));
+    private static final Set<String> UPDATE_SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(USERNAME, FIRSTNAME, LASTNAME, PASSWORD,
+            REPEAT_PASSWORD, EMAIL, OFFICE_ID, NOT_SELECTED_ROLES, ROLES, SEND_PASSWORD_TO_EMAIL, STAFF_ID, PASSWORD_NEVER_EXPIRES,
+            AppUserConstants.IS_PASSWORD_RESET_ALLOWED, AppUserConstants.IS_SELF_SERVICE_USER, CLIENTS));
     private static final Set<String> CHANGE_PASSWORD_SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(PASSWORD, REPEAT_PASSWORD));
     public static final String PASSWORD_NEVER_EXPIRE = "passwordNeverExpire";
 
@@ -128,6 +128,14 @@ public final class UserDataValidator {
             final boolean passwordNeverExpire = this.fromApiJsonHelper.extractBooleanNamed(AppUserConstants.PASSWORD_NEVER_EXPIRES,
                     element);
             baseDataValidator.reset().parameter(PASSWORD_NEVER_EXPIRE).value(passwordNeverExpire).validateForBooleanValue();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(AppUserConstants.IS_PASSWORD_RESET_ALLOWED, element)) {
+            final Boolean passwordResetAllowed = this.fromApiJsonHelper.extractBooleanNamed(AppUserConstants.IS_PASSWORD_RESET_ALLOWED,
+                    element);
+            if (passwordResetAllowed == null) {
+                baseDataValidator.reset().parameter(AppUserConstants.IS_PASSWORD_RESET_ALLOWED).trueOrFalseRequired(false);
+            }
         }
 
         Boolean isSelfServiceUser = null;
@@ -269,6 +277,14 @@ public final class UserDataValidator {
         if (this.fromApiJsonHelper.parameterExists(PASSWORD_NEVER_EXPIRE, element)) {
             final boolean passwordNeverExpire = this.fromApiJsonHelper.extractBooleanNamed(PASSWORD_NEVER_EXPIRE, element);
             baseDataValidator.reset().parameter(PASSWORD_NEVER_EXPIRE).value(passwordNeverExpire).validateForBooleanValue();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(AppUserConstants.IS_PASSWORD_RESET_ALLOWED, element)) {
+            final Boolean passwordResetAllowed = this.fromApiJsonHelper.extractBooleanNamed(AppUserConstants.IS_PASSWORD_RESET_ALLOWED,
+                    element);
+            if (passwordResetAllowed == null) {
+                baseDataValidator.reset().parameter(AppUserConstants.IS_PASSWORD_RESET_ALLOWED).trueOrFalseRequired(false);
+            }
         }
 
         Boolean isSelfServiceUser = null;

@@ -32,6 +32,8 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -142,6 +144,17 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         this.passwordResetRequired = required;
     }
 
+    @Getter
+    @Column(name = "temporary_password")
+    private String temporaryPassword;
+
+    @Column(name = "temporary_password_expiry_time")
+    private LocalDateTime temporaryPasswordExpiryTime;
+
+    @Getter
+    @Column(name = "is_password_reset_enabled", nullable = false)
+    private boolean passwordResetAllowed = false;
+
     public static AppUser fromJson(final Office userOffice, final Staff linkedStaff, final Set<Role> allRoles,
             final Collection<Client> clients, final JsonCommand command) {
 
@@ -177,8 +190,14 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
 
         final boolean isSelfServiceUser = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_SELF_SERVICE_USER);
 
-        return new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire, isSelfServiceUser,
-                clients, cannotChangePassword);
+        AppUser appUser = new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire,
+                isSelfServiceUser, clients, cannotChangePassword);
+
+        if (command.parameterExists(AppUserConstants.IS_PASSWORD_RESET_ALLOWED)) {
+            appUser.updatePasswordResetAllowed(command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_PASSWORD_RESET_ALLOWED));
+        }
+
+        return appUser;
     }
 
     protected AppUser() {
@@ -208,6 +227,7 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         this.isSelfServiceUser = isSelfServiceUser;
         this.appUserClientMappings = createAppUserClientMappings(clients);
         this.cannotChangePassword = cannotChangePassword;
+        this.passwordResetAllowed = false;
     }
 
     public EnumOptionData organisationalRoleData() {
@@ -242,9 +262,39 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         }
 
         this.password = encodePassword;
+        clearTemporaryPassword();
         this.firstTimeLoginRemaining = false;
         this.lastTimePasswordUpdated = DateUtils.getBusinessLocalDate();
 
+    }
+
+    public void updateTemporaryPassword(final String encodedPassword, final LocalDateTime expiryTime) {
+        this.temporaryPassword = encodedPassword;
+        this.temporaryPasswordExpiryTime = expiryTime;
+    }
+
+    public boolean isTemporaryPasswordExpired() {
+        if (this.temporaryPasswordExpiryTime == null) {
+            return false;
+        }
+        return LocalDateTime.now(ZoneOffset.UTC).isAfter(this.temporaryPasswordExpiryTime);
+    }
+
+    public boolean hasValidTemporaryPassword() {
+        return StringUtils.isNotBlank(this.temporaryPassword) && !isTemporaryPasswordExpired();
+    }
+
+    public void clearTemporaryPasswordExpiry() {
+        clearTemporaryPassword();
+    }
+
+    public void clearTemporaryPassword() {
+        this.temporaryPassword = null;
+        this.temporaryPasswordExpiryTime = null;
+    }
+
+    public void updatePasswordResetAllowed(final boolean passwordResetAllowed) {
+        this.passwordResetAllowed = passwordResetAllowed && !isSystemUser() && !Boolean.TRUE.equals(this.cannotChangePassword);
     }
 
     public void changeOffice(final Office differentOffice) {
@@ -335,6 +385,13 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
             final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_SELF_SERVICE_USER);
             actualChanges.put(AppUserConstants.IS_SELF_SERVICE_USER, newValue);
             this.isSelfServiceUser = newValue;
+        }
+
+        if (command.hasParameter(AppUserConstants.IS_PASSWORD_RESET_ALLOWED)
+                && command.isChangeInBooleanParameterNamed(AppUserConstants.IS_PASSWORD_RESET_ALLOWED, this.passwordResetAllowed)) {
+            final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_PASSWORD_RESET_ALLOWED);
+            actualChanges.put(AppUserConstants.IS_PASSWORD_RESET_ALLOWED, newValue);
+            updatePasswordResetAllowed(newValue);
         }
 
         if (this.isSelfServiceUser && command.hasParameter(AppUserConstants.CLIENTS)) {
@@ -542,8 +599,9 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     }
 
     private void validateHasPermission(final String prefix, final String resourceType) {
-        final String authorizationMessage = "User has no authority to " + prefix + " " + resourceType.toLowerCase() + "s";
-        final String matchPermission = prefix + "_" + resourceType.toUpperCase();
+        final String authorizationMessage = "User has no authority to " + prefix + " " + resourceType.toLowerCase(java.util.Locale.ROOT)
+                + "s";
+        final String matchPermission = prefix + "_" + resourceType.toUpperCase(java.util.Locale.ROOT);
 
         if (!hasNotPermissionForAnyOf("ALL_FUNCTIONS", "ALL_FUNCTIONS_READ", matchPermission)) {
             return;
@@ -626,7 +684,7 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     }
 
     public void validateHasCheckerPermissionTo(final String function) {
-        final String checkerPermissionName = function.toUpperCase() + "_CHECKER";
+        final String checkerPermissionName = function.toUpperCase(java.util.Locale.ROOT) + "_CHECKER";
         if (hasNotPermissionTo("CHECKER_SUPER_USER") && hasNotPermissionTo(checkerPermissionName)) {
             final String authorizationMessage = "User has no authority to be a checker for: " + function;
             throw new NoAuthorizationException(authorizationMessage);
