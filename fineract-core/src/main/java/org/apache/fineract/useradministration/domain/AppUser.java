@@ -86,6 +86,14 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     @Column(name = "nonlocked", nullable = false)
     private boolean accountNonLocked;
 
+    @Getter
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts;
+
+    @Getter
+    @Column(name = "is_login_retries_enabled", nullable = false)
+    private boolean loginRetryLimitEnabled;
+
     @Column(name = "nonexpired_credentials", nullable = false)
     private boolean credentialsNonExpired;
 
@@ -164,6 +172,10 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         final boolean userCredentialsNonExpired = true;
         final boolean userAccountNonLocked = true;
         final boolean cannotChangePassword = false;
+        boolean loginRetryLimitEnabled = false;
+        if (command.parameterExists(AppUserConstants.IS_LOGIN_RETRIES_ENABLED)) {
+            loginRetryLimitEnabled = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_LOGIN_RETRIES_ENABLED);
+        }
 
         final Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority("DUMMY_ROLE_NOT_USED_OR_PERSISTED_TO_AVOID_EXCEPTION"));
@@ -177,14 +189,18 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
 
         final boolean isSelfServiceUser = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_SELF_SERVICE_USER);
 
-        return new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire, isSelfServiceUser,
-                clients, cannotChangePassword);
+        final AppUser appUser = new AppUser(userOffice, user, allRoles, email, firstname, lastname, linkedStaff, passwordNeverExpire,
+                isSelfServiceUser, clients, cannotChangePassword);
+        appUser.updateLoginRetryLimitEnabled(resolveLoginRetryLimitEnabled(username, loginRetryLimitEnabled));
+        return appUser;
     }
 
     protected AppUser() {
         this.accountNonLocked = false;
         this.credentialsNonExpired = false;
         this.roles = new HashSet<>();
+        this.failedLoginAttempts = 0;
+        this.loginRetryLimitEnabled = false;
     }
 
     public AppUser(final Office office, final User user, final Set<Role> roles, final String email, final String firstname,
@@ -208,6 +224,8 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         this.isSelfServiceUser = isSelfServiceUser;
         this.appUserClientMappings = createAppUserClientMappings(clients);
         this.cannotChangePassword = cannotChangePassword;
+        this.failedLoginAttempts = 0;
+        this.loginRetryLimitEnabled = false;
     }
 
     public EnumOptionData organisationalRoleData() {
@@ -337,6 +355,15 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
             this.isSelfServiceUser = newValue;
         }
 
+        if (command.hasParameter(AppUserConstants.IS_LOGIN_RETRIES_ENABLED)) {
+            final boolean requestedValue = command.booleanPrimitiveValueOfParameterNamed(AppUserConstants.IS_LOGIN_RETRIES_ENABLED);
+            final boolean effectiveValue = resolveLoginRetryLimitEnabled(this.username, requestedValue);
+            if (effectiveValue != this.loginRetryLimitEnabled) {
+                actualChanges.put(AppUserConstants.IS_LOGIN_RETRIES_ENABLED, effectiveValue);
+                updateLoginRetryLimitEnabled(effectiveValue);
+            }
+        }
+
         if (this.isSelfServiceUser && command.hasParameter(AppUserConstants.CLIENTS)) {
             actualChanges.put(AppUserConstants.CLIENTS, command.arrayValueOfParameterNamed(AppUserConstants.CLIENTS));
             Set<AppUserClientMapping> newClients = createAppUserClientMappings(clients);
@@ -438,6 +465,28 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     @Override
     public boolean isAccountNonLocked() {
         return this.accountNonLocked;
+    }
+
+    public void registerFailedLoginAttempt(int maxRetries) {
+        if (!this.loginRetryLimitEnabled) {
+            return;
+        }
+        this.failedLoginAttempts = this.failedLoginAttempts + 1;
+        if (maxRetries > 0 && this.failedLoginAttempts >= maxRetries) {
+            this.accountNonLocked = false;
+        }
+    }
+
+    public void resetFailedLoginAttempts() {
+        this.failedLoginAttempts = 0;
+    }
+
+    public void updateLoginRetryLimitEnabled(final boolean loginRetryLimitEnabled) {
+        this.loginRetryLimitEnabled = resolveLoginRetryLimitEnabled(this.username, loginRetryLimitEnabled);
+        if (!this.loginRetryLimitEnabled) {
+            this.failedLoginAttempts = 0;
+            this.accountNonLocked = true;
+        }
     }
 
     @Override
@@ -695,8 +744,18 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
         return newAppUserClientMappings;
     }
 
+    private static boolean resolveLoginRetryLimitEnabled(final String username, final boolean requestedValue) {
+        if (AppUserConstants.SYSTEM_USER_NAME.equalsIgnoreCase(username)) {
+            return false;
+        }
+        return requestedValue;
+    }
+
     @Override
     public String toString() {
         return "AppUser [username=" + this.username + ", getId()=" + this.getId() + "]";
     }
 }
+
+
+

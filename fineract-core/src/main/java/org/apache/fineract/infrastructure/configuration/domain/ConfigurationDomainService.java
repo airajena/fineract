@@ -155,4 +155,10 @@ public interface ConfigurationDomainService {
     Integer getPasswordReuseRestrictionCount();
 
     boolean isForcePasswordResetOnFirstLoginEnabled();
+
+    boolean isMaxLoginRetriesEnabled();
+
+    Integer retrieveMaxLoginRetries();
 }
+
+
