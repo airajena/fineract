@@ -226,8 +226,12 @@ public class SchedulerJobApiResource {
             }
             response = Response.status(400).build();
             if (is(commandParam, SchedulerJobApiConstants.COMMAND_EXECUTE_JOB)) {
-                Long jobId = schedulerJobRunnerReadService.retrieveId(idType, identifier);
-                jobRegisterService.executeJobWithParameters(jobId, jsonRequestBody);
+                JobDetailData jobDetail = schedulerJobRunnerReadService.retrieveOne(idType, identifier);
+                Long jobId = jobDetail.getJobId();
+                String jobName = jobDetail.getShortName() != null ? jobDetail.getShortName() : jobDetail.getDisplayName();
+                final CommandWrapper commandRequest = new CommandWrapperBuilder().executeSchedulerJob(jobId, jobName)
+                        .withJson(jsonRequestBody).build();
+                this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
                 response = Response.status(202).build();
             } else {
                 throw new UnrecognizedQueryParamException(SchedulerJobApiConstants.COMMAND, commandParam);

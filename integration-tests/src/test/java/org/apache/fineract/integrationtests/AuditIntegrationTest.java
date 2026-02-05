@@ -33,9 +33,11 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import org.apache.fineract.infrastructure.jobs.service.JobName;
 import org.apache.fineract.integrationtests.common.AuditHelper;
 import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.OfficeHelper;
+import org.apache.fineract.integrationtests.common.SchedulerJobHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +53,7 @@ public class AuditIntegrationTest {
     private RequestSpecification requestSpec;
     private ClientHelper clientHelper;
     private AuditHelper auditHelper;
+    private SchedulerJobHelper schedulerJobHelper;
     private static final SecureRandom rand = new SecureRandom();
 
     /**
@@ -65,6 +68,7 @@ public class AuditIntegrationTest {
         this.responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
         this.auditHelper = new AuditHelper(this.requestSpec, this.responseSpec);
         this.clientHelper = new ClientHelper(this.requestSpec, this.responseSpec);
+        this.schedulerJobHelper = new SchedulerJobHelper(this.requestSpec);
     }
 
     @Test
@@ -155,6 +159,18 @@ public class AuditIntegrationTest {
             auditHelper.verifyOrderBysupported(shouldBeSupportedFor.get(i));
         }
 
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void auditShouldBeCreatedForSchedulerJobExecution() {
+        int jobId = schedulerJobHelper.getSchedulerJobIdByName(JobName.UPDATE_LOAN_ARREARS_AGEING.toString());
+        List<HashMap<String, Object>> auditsBefore = auditHelper.getAuditDetails(jobId, "EXECUTEJOB", "SCHEDULER");
+
+        schedulerJobHelper.runSchedulerJob(jobId);
+
+        List<HashMap<String, Object>> auditsAfter = auditHelper.getAuditDetails(jobId, "EXECUTEJOB", "SCHEDULER");
+        auditHelper.verifyMultipleAuditsOnserver(auditsBefore, auditsAfter, jobId, "EXECUTEJOB", "SCHEDULER");
     }
 
 }

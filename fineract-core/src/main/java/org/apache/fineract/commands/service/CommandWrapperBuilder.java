@@ -3676,6 +3676,15 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder executeSchedulerJob(Long jobId, String jobName) {
+        this.actionName = "EXECUTEJOB";
+        this.entityName = "SCHEDULER";
+        this.entityId = jobId;
+        this.href = "/jobs/" + jobId + "?command=executeJob";
+        this.jobName = jobName;
+        return this;
+    }
+
     public CommandWrapperBuilder updateExternalEventConfigurations() {
         this.actionName = "UPDATE";
         this.entityName = "EXTERNAL_EVENT_CONFIGURATION";
