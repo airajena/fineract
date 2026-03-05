@@ -244,6 +244,14 @@ dependencyManagement {
         dependency 'org.mapstruct:mapstruct:1.6.3'
         dependency 'org.mapstruct:mapstruct-processor:1.6.3'
 
+        dependency 'io.github.openfeign.querydsl:querydsl-core:6.12'
+        dependency 'io.github.openfeign.querydsl:querydsl-sql:6.12'
+        dependency 'io.github.openfeign.querydsl:querydsl-sql-spring:6.12'
+        dependency 'io.github.openfeign.querydsl:querydsl-apt:6.12'
+
+        dependency 'com.infobip:infobip-spring-data-jdbc-annotation-processor:10.0.5'
+        dependency 'com.infobip:infobip-spring-data-jdbc-querydsl:10.0.5'
+
         dependency "org.apache.avro:avro:1.12.0"
 
         dependency ('org.mariadb.jdbc:mariadb-java-client:3.5.2') {

@@ -197,8 +197,10 @@ dependencies {
             )
 
     compileOnly 'org.projectlombok:lombok'
+    compileOnly 'org.springframework.data:spring-data-relational'
     annotationProcessor 'org.projectlombok:lombok'
     annotationProcessor 'org.mapstruct:mapstruct-processor'
+    annotationProcessor 'com.infobip:infobip-spring-data-jdbc-annotation-processor'
 
     implementation 'ch.qos.logback.contrib:logback-json-classic'
     implementation 'ch.qos.logback.contrib:logback-jackson'
