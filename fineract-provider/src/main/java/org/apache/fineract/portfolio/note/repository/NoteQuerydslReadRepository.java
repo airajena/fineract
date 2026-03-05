@@ -20,8 +20,6 @@ package org.apache.fineract.portfolio.note.repository;
 
 import com.querydsl.core.Tuple;
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.sql.SQLQuery;
-import com.querydsl.sql.SQLQueryFactory;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -41,30 +39,31 @@ public class NoteQuerydslReadRepository {
     private static final QAppUserJdbcEntity CREATED_BY = new QAppUserJdbcEntity("cb");
     private static final QAppUserJdbcEntity MODIFIED_BY = new QAppUserJdbcEntity("mb");
 
-    private final SQLQueryFactory sqlQueryFactory;
+    private final NoteJdbcRepository noteJdbcRepository;
 
     public Optional<NoteData> findNote(final Long noteId, final Long resourceId, final NoteType noteType) {
         final BooleanExpression predicate = NOTE.id.eq(Objects.requireNonNull(noteId, "noteId must not be null"))
                 .and(resourcePredicate(Objects.requireNonNull(noteType, "noteType must not be null"),
                         Objects.requireNonNull(resourceId, "resourceId must not be null")));
-        final Tuple result = baseSelect().where(predicate).orderBy(NOTE.createdDate.desc()).fetchFirst();
-        return Optional.ofNullable(result).map(this::toNoteData);
-    }
-
-    public List<NoteData> findNotesByResource(final Long resourceId, final NoteType noteType) {
-        return baseSelect()
-                .where(resourcePredicate(Objects.requireNonNull(noteType, "noteType must not be null"),
-                        Objects.requireNonNull(resourceId, "resourceId must not be null")))
-                .orderBy(NOTE.createdDate.desc()).fetch().stream().map(this::toNoteData).toList();
-    }
-
-    private SQLQuery<Tuple> baseSelect() {
-        return sqlQueryFactory
+        final Tuple result = noteJdbcRepository.query(q -> q
                 .select(NOTE.id, NOTE.clientId, NOTE.groupId, NOTE.loanId, NOTE.loanTransactionId, NOTE.noteTypeEnum, NOTE.note,
                         NOTE.createdBy, CREATED_BY.username, NOTE.createdOnUtc, NOTE.createdDate, NOTE.lastModifiedBy, MODIFIED_BY.username,
                         NOTE.lastModifiedOnUtc, NOTE.lastModifiedDate)
                 .from(NOTE).leftJoin(CREATED_BY).on(CREATED_BY.id.eq(NOTE.createdBy)).leftJoin(MODIFIED_BY)
-                .on(MODIFIED_BY.id.eq(NOTE.lastModifiedBy));
+                .on(MODIFIED_BY.id.eq(NOTE.lastModifiedBy)).where(predicate).orderBy(NOTE.createdDate.desc()).fetchFirst());
+        return Optional.ofNullable(result).map(this::toNoteData);
+    }
+
+    public List<NoteData> findNotesByResource(final Long resourceId, final NoteType noteType) {
+        return noteJdbcRepository.query(q -> q
+                .select(NOTE.id, NOTE.clientId, NOTE.groupId, NOTE.loanId, NOTE.loanTransactionId, NOTE.noteTypeEnum, NOTE.note,
+                        NOTE.createdBy, CREATED_BY.username, NOTE.createdOnUtc, NOTE.createdDate, NOTE.lastModifiedBy, MODIFIED_BY.username,
+                        NOTE.lastModifiedOnUtc, NOTE.lastModifiedDate)
+                .from(NOTE).leftJoin(CREATED_BY).on(CREATED_BY.id.eq(NOTE.createdBy)).leftJoin(MODIFIED_BY)
+                .on(MODIFIED_BY.id.eq(NOTE.lastModifiedBy))
+                .where(resourcePredicate(Objects.requireNonNull(noteType, "noteType must not be null"),
+                        Objects.requireNonNull(resourceId, "resourceId must not be null")))
+                .orderBy(NOTE.createdDate.desc()).fetch()).stream().map(this::toNoteData).toList();
     }
 
     private NoteData toNoteData(final Tuple row) {

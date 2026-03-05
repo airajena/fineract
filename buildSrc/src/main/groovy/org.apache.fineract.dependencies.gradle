@@ -249,8 +249,9 @@ dependencyManagement {
         dependency 'io.github.openfeign.querydsl:querydsl-sql-spring:6.12'
         dependency 'io.github.openfeign.querydsl:querydsl-apt:6.12'
 
-        dependency 'com.infobip:infobip-spring-data-jdbc-annotation-processor:10.0.5'
-        dependency 'com.infobip:infobip-spring-data-jdbc-querydsl:10.0.5'
+        dependency 'com.infobip:infobip-spring-data-jdbc-annotation-processor:9.0.8'
+        dependency 'com.infobip:infobip-spring-data-jdbc-querydsl:9.0.8'
+        dependency 'com.infobip:infobip-spring-data-jdbc-querydsl-boot-starter:9.0.8'
 
         dependency "org.apache.avro:avro:1.12.0"
 
